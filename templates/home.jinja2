@@ -1,0 +1,88 @@
+{% extends "layout.jinja2" %}
+
+{% block styles %}
+    {{ super() }}
+    <style type="text/css">
+        body {
+            padding-top: 50px;
+        }
+
+        .background-image::before, .background-image::after {
+            background: url({{ url_for('static', filename='bg.jpg') }}) no-repeat fixed center top;
+            background-size: cover;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            min-width: 100%;
+            min-height: 100%;
+        }
+
+        .background-image::before {
+            z-index: -2;
+            -webkit-filter: blur(1px) brightness(.8) contrast(.8);
+            filter: blur(8px) brightness(.8) contrast(.8);
+        }
+
+        .background-image::after {
+            z-index: -1;
+            -webkit-filter: blur(7px) brightness(.8) contrast(.8);
+            filter: blur(7px) brightness(.8) contrast(.8);
+        }
+
+        .bottom-margin {
+            margin-bottom: 30px;
+        }
+
+        .white-text {
+            color: #FFF;
+        }
+        
+        .text-shadow {
+            text-shadow: 0 0 50px black;
+        }
+
+        .large-font {
+            font-size: 72px;
+            line-height: 72px;
+        }
+
+        .medium-font {
+            font-size: 48px;
+            line-height: 48px;
+        }
+
+        .small-font {
+            font-size: 24px;
+            line-height: 24px;
+        }
+
+        .extra-small-font {
+            font-size: 18px;
+            line-height: 18px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container background-image">
+        <div class="row white-text text-shadow">
+            {% for sensor in sensors %}
+                <div class="col-xs-6 col-sm-3 text-center bottom-margin">
+                    <p class="extra-small-font">
+                        {{ sensor.name }}
+                    </p>
+                    <p>
+                        <!-- this is one line to prevent spaces between spans -->
+                        <span class="large-font" style="padding-left: 10px">{{ (sensor.temperature / 10) | round(0, 'floor') | int }}</span><span class="medium-font">.{{ sensor.temperature % 10 }}</span><span class="large-font">&deg;</span>
+                    </p>
+                    <p>
+                        <span class="small-font">{{ sensor.humidity }}%</span>
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

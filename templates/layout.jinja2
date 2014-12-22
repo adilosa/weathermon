@@ -1,0 +1,45 @@
+{% extends "bootstrap/base.html" %}
+
+{% set active_page = active_page | default('') -%}
+
+{% set navigation_bar = [
+] -%}
+
+
+{% block title %}
+    Weather
+{% endblock %}
+
+{% block styles %}
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet" />
+    <style type="text/css">
+        body {
+            font-size: 16px;
+            line-height: 26px;
+            font-weight: lighter;
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;  
+        }
+    </style>
+{% endblock %}
+
+{% block scripts %}
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        {% block container %}
+            <div class="row">
+                {% block main_row_content %}
+                    <div {% block column_styles %}class="col col-xs-12"{% endblock %}>
+                        {% block inner_content %}
+                        {% endblock %}
+                    </div>
+                {% endblock %}
+            </div>
+            {% block additional_rows %}
+            {% endblock %}
+        {% endblock %}
+    </div>
+{% endblock %}

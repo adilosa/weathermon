@@ -6,7 +6,7 @@ static const int RX_PIN            =    3;
 static const int SHORT_DELAY       =  242;
 static const int LONG_DELAY        =  484;
 static const int NUM_HEADER_BITS   =   10;
-static const int MAX_BYTES         =    6;
+static const int MAX_BYTES         =    7;
 
 char      temp_bit;
 bool      first_zero;
@@ -47,8 +47,14 @@ void init_globals()
 
 void read_signal()
 {
+    if(digitalRead(RX_PIN) != temp_bit) {
+        return;
+    }
     delayMicroseconds(SHORT_DELAY);
     if (digitalRead(RX_PIN) != temp_bit) {
+        // Halfway through the bit pattern the RX_PIN should
+        // be equal to tempBit, if not then error, restart!
+        init_globals();
         return;
     }
     delayMicroseconds(LONG_DELAY);
@@ -64,6 +70,9 @@ void read_signal()
         }
     } else {
         if(header_hits < NUM_HEADER_BITS) {
+            // Something went wrong, we should not be in the
+            // header here, so restart!
+            init_globals();
             return;
         }
         if (!first_zero) {
@@ -86,6 +95,37 @@ void add_bit(char bit)
     }
 }
 
+// checksum code from BaronVonSchnowzer at
+// http://forum.arduino.cc/index.php?topic=214436.15
+char checksum(int length, char *buff)
+{
+    char mask = 0x7C;
+    char checksum = 0x64;
+    char data;
+    int byteCnt;
+
+    for (byteCnt=0; byteCnt < length; byteCnt++) {
+        int bitCnt;
+        data = buff[byteCnt];
+        for (bitCnt= 7; bitCnt >= 0 ; bitCnt--) {
+            char bit;
+            // Rotate mask right
+            bit = mask & 1;
+            mask = (mask >> 1) | (mask << 7);
+            if (bit) {
+              mask ^= 0x18;
+            }
+
+            // XOR mask into checksum if data bit is 1
+            if(data & 0x80) {
+              checksum ^= mask;
+            }
+            data <<= 1;
+        }
+    }
+    return checksum;
+}
+
 void record_sensor_data()
 {
     int ch = ((manchester[3] & 0x70) / 16) + 1;
@@ -93,8 +133,11 @@ void record_sensor_data()
     int new_temp = ((manchester[3] & 0x7) * 256 + manchester[4]) - 400;
     int new_hum = manchester[5]; 
     int low_bat = manchester[3] & 0x80 / 128;
-    if (data_type != 0x45 || ch < 1 || ch > MAX_NUM_SENSORS || new_hum > 100 ||
-                 new_temp < -200 || new_temp > 1200) {
+    char check_byte = manchester[MAX_BYTES-1];
+    char check = checksum(MAX_BYTES-2, manchester+1);
+    if (check != check_byte || data_type != 0x45 || ch < 1 ||
+           ch > MAX_NUM_SENSORS || new_hum > 100 ||
+           new_temp < -200 || new_temp > 1200) {
         return;
     }
     printf("Sensor %d:  %dF  %d% Batt: %d\n", ch, new_temp, new_hum, low_bat);
@@ -105,4 +148,3 @@ void record_sensor_data()
     sqlite3_exec(db, sql, 0, 0, 0);
     sqlite3_free(sql);
 }
-

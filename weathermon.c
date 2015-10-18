@@ -33,7 +33,7 @@ int init()
     }
     wiringPiSetup();
     pinMode(RX_PIN, INPUT);
-    sqlite3_open("weather.db", &db);
+    sqlite3_open("/var/www/weathermon/weather.db", &db);
 }
 
 void init_globals() 

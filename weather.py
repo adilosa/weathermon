@@ -1,3 +1,4 @@
+from pytz import timezone
 from datetime import datetime, timedelta
 from collections import Counter
 
@@ -47,61 +48,77 @@ class Sensor(db.Model):
     channel = db.Column(db.Integer)
     name = db.Column(db.String(64))
 
-    @property
-    def data(self):
-        return {
-            "id": self.id,
-            "channel": self.channel,
-            "name": self.name,
-            "temperature": self.temperature,
-            "humidity": self.humidity
-        }
-
-    @property
-    def temperature(self):
-        return self.latest()["temperature"]
-
-    @property
-    def humidity(self):
-        return self.latest()["humidity"]
-
     def latest(self):
-        if hasattr(self, 'latest_data'):
-            return self.latest_data
-        limit = 15
+        now = datetime.utcnow()
         query = db.session.query(
                     Reading.temperature, 
                     Reading.humidity, 
                     Reading.timestamp
                 )\
                 .filter_by(channel=self.channel)\
-                .order_by(Reading.timestamp.desc())\
-                .limit(limit)
+                .filter(Reading.timestamp > now - timedelta(minutes=15))\
+                .order_by(Reading.timestamp.desc())
         results = query.all()
         self.latest_data = {
-            "temperature": sum([r[0] for r in results]) / limit,
-            "humidity": sum([r[1] for r in results]) / limit,
-            "timestamp": results[0][2]
+            "temperature": self._median([r[0] for r in results]),
+            "humidity": self._median([r[1] for r in results]),
+            "timestamp": results[0][2] if len(results) > 0 and len(results[0]) >=2 else now
         }
         return self.latest_data
 
     def last_day(self):
+        utc = timezone("UTC")
+        eastern = timezone('US/Eastern')
+        hours = 30
+        now = datetime.utcnow()
         query = db.session.query(
-                func.round(func.avg(Reading.temperature)), 
+                func.round(func.avg(Reading.temperature)),
                 func.round(func.avg(Reading.humidity)),
                 Reading.timestamp
             )\
             .filter_by(channel=self.channel)\
-            .group_by(func.strftime('%H', Reading.timestamp))\
+            .filter(Reading.timestamp > func.datetime('now', '-30 hours'))\
+            .group_by(func.strftime('%d %H', Reading.timestamp))\
             .order_by(Reading.timestamp.desc())\
-            .limit(30)
-        return [
-            {
-                "temperature": r[0],
-                "humidity": r[1],
-                "timestamp": r[2]
-            } for r in query.all()
-        ]
+            .limit(hours)
+        readings = query.all()
+        times = ["" for i in range(hours)]
+        est = utc.localize(datetime.utcnow()).astimezone(eastern)
+        for i in range(0, hours):
+             times[i] = "\"" + (est - timedelta(hours=i)).strftime("%I%p").lstrip('0') + "\""
+        times.reverse()
+        temps = [0 for i in range(hours)]
+        hums = [0 for i in range(hours)]
+        for r in readings: 
+            idx = hours - self._hours(now - r[2]) - 1
+            temps[idx] = r[0] / 10
+            hums[idx] = r[1]
+        self.last_day_data = {
+            "temperatures": temps,
+            "humidities": hums,
+            "timestamps": times
+        }
+        return self.last_day_data
+
+    @staticmethod
+    def _hours(td):
+        return (td.days * 24) + int(td.seconds // (60 * 60))
+
+    @staticmethod
+    def _median(l):
+        s = sorted(l)
+        length = len(l)
+        if length == 0:
+            return 0
+        if not length % 2:
+            return (s[length / 2] + s[length / 2] - 1) / 2
+        return s[length / 2]
+
+    @staticmethod
+    def _round_to_hour(dt):
+        seconds = (dt - dt.min).seconds
+        rounding = (seconds + 3600 / 2) // 3600 * 3600
+        return dt + timedelta(0, rounding - seconds, -dt.microsecond)
 
     def __repr__(self):
         return "<Sensor {id}: \"{name}\" on Ch {ch}>".format(
@@ -118,21 +135,3 @@ def main_page():
         sensors=Sensor.query.order_by(Sensor.channel.asc()).all()
     )
 
-
-@app.route("/sensors", defaults={"_id": None})
-@app.route("/sensors/<int:_id>")
-def sensors(_id):
-    return jsonify(_sensors(_id))
-
-
-def _sensors(_id=None):
-    if _id is not None:
-        sensor = Sensor.query.filter_by(id=_id).first_or_404()
-        data = sensor.data
-        data.update({"readings": sensor.last_day()})
-        return data
-    return {"sensors": [sensor.data for sensor in Sensor.query.all()]}
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)

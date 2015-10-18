@@ -4,12 +4,15 @@
     {{ super() }}
     <style type="text/css">
         body {
-            padding-top: 50px;
+            padding-top: 100px;
         }
 
         .background-image::before, .background-image::after {
-            background: url({{ url_for('static', filename='bg.jpg') }}) no-repeat fixed center top;
+            background: url({{ url_for('static', filename='img/bg.jpg') }}) no-repeat fixed center center;
             background-size: cover;
+	    background-attachment: scroll;
+	    overflow: scroll;
+            -webkit-overflow-scrolling: touch;
             position: fixed;
             top: 0;
             left: 0;
@@ -32,14 +35,30 @@
             filter: blur(7px) brightness(.8) contrast(.8);
         }
 
+        .page-header {
+            margin: 10px 0 20px 0;
+        }
+
         .bottom-margin {
-            margin-bottom: 30px;
+            margin-bottom: 50px;
+        }
+
+        .inset {
+            padding: 10px;
+        }
+
+        .dark-background {
+            background-color: rgba(0, 0, 0, .2);
+        }
+
+        .chart {
+            width: 100% !important;
         }
 
         .white-text {
             color: #FFF;
         }
-        
+
         .text-shadow {
             text-shadow: 0 0 50px black;
         }
@@ -66,23 +85,84 @@
     </style>
 {% endblock %}
 
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/Chart.min.js') }}"></script>
+    <script type="text/javascript">
+        Chart.defaults.global.animation = false;
+        Chart.defaults.global.responsive = true;
+        Chart.defaults.global.maintainAspectRatio = false;
+        Chart.defaults.global.scaleLineColor = "rgba(220, 220, 220, 0.8)";
+        Chart.defaults.global.scaleFontColor= "#CCC";
+        {% for sensor in sensors %}
+            {% set id = sensor.id %}
+            {% set data = sensor.last_day() %}
+            var ctx{{ id }} = $("#day-chart-{{ id }}").get(0).getContext("2d");
+            var data{{ id }} = {
+                labels: [
+                    {% for time in data['timestamps'] %}
+                        {{ time }}, 
+                    {% endfor %}
+                ],
+                datasets: [
+                    {
+                        label: "Temperature",
+                        fillColor: "rgba(220,220,220,0.2)",
+                        strokeColor: "rgba(220,220,220,1)",
+                        pointColor: "rgba(220,220,220,1)",
+                        pointStrokeColor: "#fff",
+                        pointHighlightFill: "#fff",
+                        pointHighlightStroke: "rgba(220,220,220,1)",
+                        data: [{{ data['temperatures'] | join(', ') }}]
+                    },
+                    {
+                        label: "Humidity",
+                        fillColor: "rgba(151,187,205,0.2)",
+                        strokeColor: "rgba(151,187,205,1)",
+                        pointColor: "rgba(151,187,205,1)",
+                        pointStrokeColor: "#fff",
+                        pointHighlightFill: "#fff",
+                        pointHighlightStroke: "rgba(151,187,205,1)",
+                        data: [{{ data['humidities'] | join(', ') }}]
+                    }
+                ]
+            };
+            var chart{{ id }} = new Chart(ctx{{ id }}).Line(data{{ id }});
+        {% endfor %}
+    </script>
+{% endblock %}
+
 {% block content %}
     <div class="container background-image">
         <div class="row white-text text-shadow">
             {% for sensor in sensors %}
+                {% set data = sensor.latest() %}
                 <div class="col-xs-6 col-sm-3 text-center bottom-margin">
                     <p class="extra-small-font">
-                        {{ sensor.name }}
+                        Sensor {{ sensor.channel }}
                     </p>
                     <p>
                         <!-- this is one line to prevent spaces between spans -->
-                        <span class="large-font" style="padding-left: 10px">{{ (sensor.temperature / 10) | round(0, 'floor') | int }}</span><span class="medium-font">.{{ sensor.temperature % 10 }}</span><span class="large-font">&deg;</span>
+                        <span class="large-font" style="padding-left: 10px">{{ (data.temperature / 10) | round(0, 'floor') | int }}</span><span class="medium-font">.{{ data.temperature % 10 }}</span><span class="large-font">&deg;</span>
                     </p>
                     <p>
-                        <span class="small-font">{{ sensor.humidity }}%</span>
+                        <span class="small-font">{{ data.humidity }}%</span>
                     </p>
                 </div>
             {% endfor %}
         </div>
+        {% for sensor in sensors %}
+            <div class="row inset dark-background bottom-margin">
+                <div class="col-xs-12">
+                    <h2 class="page-header white-text text-shadow">Sensor {{ sensor.channel }}</h2>
+                </div>
+                <div class="col-xs-12" height="400">
+                    <div class="chart">
+                        <canvas id="day-chart-{{ sensor.id }}" height="350">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
     </div>
 {% endblock %}

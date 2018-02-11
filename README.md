@@ -1,7 +1,7 @@
 # weathermon
 Raspberry Pi-based weather monitor for [Ambient Weather F007-TH][] sensors. 
 
-Listens to RF signals from the F007-TH sensors using a [434MHz reciever][], tracks weather data, and serves a weather site written in [Flask][]. 
+Listens to RF signals from the F007-TH sensors using a [434MHz reciever][], tracks weather data, and serves a weather site written in [Flask][]. Also sold as TFA sensor 30.3208.02.
 
 [Ambient Weather F007-TH]: http://www.ambientweather.com/amf007th.html
 [434Mhz reciever]: https://www.sparkfun.com/products/10532

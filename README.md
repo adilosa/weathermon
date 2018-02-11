@@ -13,8 +13,8 @@ Listens to RF signals from the F007-TH sensors using a [434MHz reciever][], trac
 * bit time = 1ms
 * 195 bit frame, 65 bit packet repeated 3 times
 * frames sent every ~1 min (varies by channel)
-  * Map of channel id to transmission interval: {1: 53s, 2: 57s, 3: 59s, 4: 61s, 5: 67s, 6: ??s, 7: 71s, 8: 73s}
-  * Source: [github.com/gr-ambient](https://github.com/volgy/gr-ambient/blob/master/docs/notes.txt). Ch 6 interval missing there too. 
+  * Map of channel id to transmission interval: {1: 53s, 2: 57s, 3: 59s, 4: 61s, 5: 67s, 6: 71s, 7: 73s, 8: 79s}
+  * Source: [github.com/gr-ambient](https://github.com/volgy/gr-ambient/blob/master/docs/notes.txt)
 
 * Packet Format
   * header: all 1s, with final 01 before data starts 
